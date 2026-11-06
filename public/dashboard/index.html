@@ -21,6 +21,10 @@
   color-scheme:light;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+img{max-width:100%}
+chat-widget,.lc_text-widget,#lc_text-widget,[id^="lc_text-widget"]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;
   padding-left:max(clamp(16px,3.5vw,64px),env(safe-area-inset-left,0px));padding-right:max(clamp(16px,3.5vw,64px),env(safe-area-inset-right,0px));padding-block:0 56px}
 @media (min-width:1600px){.wrap{zoom:1.04}}
@@ -290,7 +294,15 @@ section.list h2 .n{font-family:var(--f-ui);font-size:13px;color:var(--ink-3)}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;z-index:20;pointer-events:none}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
-.gate{max-width:340px;margin:14vh auto 0;display:flex;flex-direction:column;gap:12px}
+.gatewrap{position:relative;min-height:100vh;display:grid;place-items:center;overflow:hidden}
+.gate{position:relative;z-index:2;width:min(340px,100%);display:flex;flex-direction:column;gap:12px;background:var(--bg);padding:24px;border-radius:14px}
+.gdeco{position:absolute;inset:0;pointer-events:none}
+.gs{position:absolute;--y:#fff3a8;background:var(--y);color:#4a4210;width:128px;min-height:112px;padding:13px 12px;font-family:var(--f-quote);font-size:16px;line-height:1.15;transform:rotate(var(--r));box-shadow:0 1px 1px rgba(0,0,0,.06),0 8px 14px -8px rgba(74,66,16,.45)}
+.gs::before{content:"";position:absolute;top:-7px;left:50%;width:44px;height:13px;transform:translateX(-50%) rotate(-3deg);background:rgba(237,233,255,.8)}
+.gs b{display:block;font-family:var(--f-ui);font-size:11px;margin-top:6px}
+.gq{position:absolute;margin:0;max-width:280px;font-family:var(--f-quote);font-style:italic;color:var(--silver);font-size:clamp(16px,1.6vw,21px);line-height:1.2}
+.gq cite{display:block;font-family:var(--f-mono);font-style:normal;font-size:10px;letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
+@media (max-width:760px){.gs{width:104px;min-height:90px;font-size:13.5px}.gq{font-size:14px;max-width:170px}.gs:nth-child(5),.gs:nth-child(6),.gq:nth-of-type(4),.gq:nth-of-type(6){display:none}}
 .gate h1{font-size:34px;letter-spacing:-.04em;margin:0}
 .gate input{border:1px solid var(--line);padding:12px;border-radius:10px;font:inherit}
 .gate button{background:var(--p);color:#fff;border:0;padding:12px;border-radius:10px;font-weight:600}
@@ -300,13 +312,28 @@ section.list h2 .n{font-family:var(--f-ui);font-size:13px;color:var(--ink-3)}
 </head>
 <body>
 
-<section class="gate" id="gate" hidden>
-  <h1>Lock in.</h1>
-  <input id="pw" type="password" placeholder="Dashboard password" autocomplete="current-password">
-  <button id="pwgo">Enter</button>
-  <div class="err" id="pwerr" hidden>Wrong password. Try again.</div>
-  <p class="q" style="margin-top:24px">“No one’s coming to save you.”</p>
-</section>
+<div class="gatewrap" id="gate" hidden>
+  <div class="gdeco" aria-hidden="true">
+    <div class="gs" style="top:8%;left:6%;--r:-5deg">What college do you want to go to?</div>
+    <div class="gs" style="top:10%;right:9%;--r:4deg;--y:#fff7c2" id="gradnote2">Graduation is coming.</div>
+    <div class="gs" style="bottom:12%;left:10%;--r:3deg">100 calls.<b>No excuses.</b></div>
+    <div class="gs" style="bottom:9%;right:7%;--r:-3deg;--y:#fff7c2">$10K month.<b>Then $20K.</b></div>
+    <div class="gs" style="top:44%;left:2%;--r:-2deg">Call the next one.</div>
+    <div class="gs" style="top:46%;right:2%;--r:5deg">Nobody is watching.<b>Do it anyway.</b></div>
+    <p class="gq" style="top:4%;left:38%">“No one’s coming to save you.”</p>
+    <p class="gq" style="top:28%;left:18%">“LARP until you’re larped.”</p>
+    <p class="gq" style="top:30%;right:16%;text-align:right">“You’re the only thing stopping you.”</p>
+    <p class="gq" style="bottom:30%;left:20%">“Know thyself.”<cite>Socrates</cite></p>
+    <p class="gq" style="bottom:28%;right:18%;text-align:right">“The beginning is the most important part of the work.”<cite>Plato</cite></p>
+    <p class="gq" style="bottom:3%;left:36%">“We suffer more often in imagination than in reality.”<cite>Seneca</cite></p>
+  </div>
+  <section class="gate">
+    <h1>Lock in.</h1>
+    <input id="pw" type="password" placeholder="Dashboard password" autocomplete="current-password">
+    <button id="pwgo">Enter</button>
+    <div class="err" id="pwerr" hidden>Wrong password. Try again.</div>
+  </section>
+</div>
 
 <main class="wrap" id="app" hidden>
   <div class="topzone">
@@ -479,6 +506,7 @@ function render(){
   let months=(gy-Y)*12+(6-Mo),days=1-D;if(days<0){months--;days+=new Date(Y,Mo,0).getDate()}
   const gtxt=months>0?`${months} month${months===1?'':'s'}${days?`, ${days} day${days===1?'':'s'}`:''}`:`${days} day${days===1?'':'s'}`;
   $('grad').innerHTML=`<b>${gtxt}</b> until graduation · June 1`;
+  if($('gradnote2'))$('gradnote2').innerHTML=`${months>0?months+' months':days+' days'} to graduation.<b>June 1</b>`;
   $('gradnote').innerHTML=`${months>0?months+' months':days+' days'} to graduation.<b>June 1</b>`;
   ['arlo','cf'].forEach(b=>$('b-'+b).setAttribute('aria-pressed',String(S.brand===b)));
   document.querySelectorAll('#filters button').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.f===S.filter)));
@@ -561,7 +589,8 @@ async function loadLeads(q){
   }catch(e){if(e.auth)return showGate(true);$('status').textContent='Couldn’t reach GHL. Check the tokens in Netlify.'}
 }
 
-function showGate(bad){$('app').hidden=true;$('gate').hidden=false;$('pwerr').hidden=!bad;$('pw').focus()}
+function gateGrad(){const [Y,Mo,D]=todayCT().split('-').map(Number);const gy=(Mo>6||(Mo===6&&D>1))?Y+1:Y;let m=(gy-Y)*12+(6-Mo),d=1-D;if(d<0){m--;d+=new Date(Y,Mo,0).getDate()}const el=$('gradnote2');if(el)el.innerHTML=`${m>0?m+' months':d+' days'} to graduation.<b>June 1</b>`}
+function showGate(bad){gateGrad();$('app').hidden=true;$('gate').hidden=false;$('pwerr').hidden=!bad;$('pw').focus()}
 $('pwgo').addEventListener('click',()=>{S.key=$('pw').value;store.set('cc-key',S.key);boot()});
 $('pw').addEventListener('keydown',e=>{if(e.key==='Enter')$('pwgo').click()});
 
