@@ -53,8 +53,9 @@ function shape(c) {
 async function getLeads(brand, q) {
   const { location } = account(brand);
   if (!account(brand).token || !location) throw new Error(`Missing ${brand === "cf" ? "GHL_CF" : "GHL_ARLO"}_TOKEN or _LOCATION in Netlify`);
-  const tag = (env("COLD_CALL_TAG") || "cold-call").toLowerCase();
-  const hasTag = (c) => (c.tags || []).some((t) => String(t).toLowerCase() === tag);
+  const norm = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const tag = norm(env("COLD_CALL_TAG") || "cold-call"); // matches cold-call, cold call, Cold_Call, coldcall
+  const hasTag = (c) => (c.tags || []).some((t) => norm(t) === tag);
   const all = [];
   let lastErr = null;
   // 1) Search endpoint (no server-side filter; we filter by tag ourselves — most reliable)
