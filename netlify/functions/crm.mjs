@@ -52,20 +52,32 @@ function shape(c) {
 
 async function getLeads(brand, q) {
   const { location } = account(brand);
-  const tag = env("COLD_CALL_TAG") || "cold-call";
-  const body = { locationId: location, pageLimit: 100, page: 1 };
-  if (q) body.query = q;
-  else body.filters = [{ field: "tags", operator: "contains", value: tag }];
-  let contacts;
+  if (!account(brand).token || !location) throw new Error(`Missing ${brand === "cf" ? "GHL_CF" : "GHL_ARLO"}_TOKEN or _LOCATION in Netlify`);
+  const tag = (env("COLD_CALL_TAG") || "cold-call").toLowerCase();
+  const hasTag = (c) => (c.tags || []).some((t) => String(t).toLowerCase() === tag);
+  const all = [];
+  let lastErr = null;
+  // 1) Search endpoint (no server-side filter; we filter by tag ourselves — most reliable)
   try {
-    contacts = (await ghl(brand, "/contacts/search", { method: "POST", body: JSON.stringify(body) })).contacts || [];
-  } catch (e) {
-    // fallback to the older list endpoint
-    const qs = new URLSearchParams({ locationId: location, limit: "100" });
-    if (q) qs.set("query", q);
-    contacts = ((await ghl(brand, "/contacts/?" + qs)).contacts || []).filter((c) => q || (c.tags || []).includes(tag));
+    for (let page = 1; page <= 10; page++) {
+      const body = { locationId: location, pageLimit: 100, page };
+      if (q) body.query = q;
+      const r = await ghl(brand, "/contacts/search", { method: "POST", body: JSON.stringify(body) });
+      const list = r.contacts || [];
+      all.push(...list);
+      if (list.length < 100) break;
+    }
+  } catch (e) { lastErr = e; }
+  // 2) Fallback: older list endpoint
+  if (!all.length) {
+    try {
+      const qs = new URLSearchParams({ locationId: location, limit: "100" });
+      if (q) qs.set("query", q);
+      all.push(...((await ghl(brand, "/contacts/?" + qs)).contacts || []));
+    } catch (e) { lastErr = lastErr || e; }
   }
-  return contacts.map(shape);
+  if (!all.length && lastErr) throw lastErr;
+  return (q ? all : all.filter(hasTag)).map(shape);
 }
 
 // Sum of successful charges (minus refunds) per month, last 6 months, Chicago time.

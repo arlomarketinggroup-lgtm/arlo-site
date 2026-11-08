@@ -458,7 +458,7 @@ async function api(action,body){
   const r=await fetch(API+'?action='+action,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-dash-key':S.key},body:body?JSON.stringify(body):undefined});
   if(r.status===401){const e=new Error('auth');e.auth=true;throw e}
   const ct=r.headers.get('content-type')||'';
-  if(!r.ok||!ct.includes('json'))throw new Error('api '+r.status);
+  if(!r.ok||!ct.includes('json')){let m='api '+r.status;try{const j=await r.json();if(j&&j.error)m=j.error}catch(x){}throw new Error(m)}
   return r.json();
 }
 
@@ -586,7 +586,7 @@ async function loadLeads(q){
     S.leads[S.brand]=[...map.values()];S.loc[S.brand]=r.locationId;
     $('status').textContent='Synced with GHL · '+tm(Date.now());
     renderLeads();
-  }catch(e){if(e.auth)return showGate(true);$('status').textContent='Couldn’t reach GHL. Check the tokens in Netlify.'}
+  }catch(e){if(e.auth)return showGate(true);$('status').textContent='GHL error: '+(e.message||'unknown')}
 }
 
 function gateGrad(){const [Y,Mo,D]=todayCT().split('-').map(Number);const gy=(Mo>6||(Mo===6&&D>1))?Y+1:Y;let m=(gy-Y)*12+(6-Mo),d=1-D;if(d<0){m--;d+=new Date(Y,Mo,0).getDate()}const el=$('gradnote2');if(el)el.innerHTML=`${m>0?m+' months':d+' days'} to graduation.<b>June 1</b>`}
