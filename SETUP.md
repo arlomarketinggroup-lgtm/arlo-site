@@ -13,7 +13,7 @@ Arlo GHL: Settings -> Private Integrations -> Create new integration. Turn on:
   contacts.readonly, contacts.write, conversations.readonly,
   conversations/message.readonly, conversations/message.write
 Hula Creative: your brother does the same and sends you the token.
-Location ID = the part after /v2/location/ in the GHL URL (Hula: CrDGr4pCivRi7Rg9rkqL).
+Location ID = the part after /v2/location/ in the GHL URL.
 
 ## 3. Twilio (calling right from the dashboard)
 a) Sign up at twilio.com, then Upgrade (add ~$20). Trial accounts can only call verified numbers.
@@ -33,7 +33,7 @@ DASHBOARD_PASSWORD     = (pick one)
 GHL_ARLO_TOKEN         = pit-...
 GHL_ARLO_LOCATION      = (Arlo location ID)
 GHL_CF_TOKEN           = pit-...
-GHL_CF_LOCATION        = CrDGr4pCivRi7Rg9rkqL
+GHL_CF_LOCATION        = (Hula location ID)
 TWILIO_ACCOUNT_SID     = AC...
 TWILIO_AUTH_TOKEN      = ...
 TWILIO_API_KEY         = SK...
