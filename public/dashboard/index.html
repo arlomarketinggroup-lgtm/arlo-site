@@ -647,7 +647,7 @@ async function startCall(lead){
     const call=await d.connect({params:{To:lead.phone,brand:S.brand}});P.call=call;
     call.on('ringing',()=>setState('ringing'));
     call.on('accept',()=>setState('live'));
-    ['disconnect','cancel','reject'].forEach(ev=>call.on(ev,()=>setState('ended')));
+    ['disconnect','cancel','reject'].forEach(ev=>call.on(ev,()=>{const quick=!P.t0||Date.now()-P.t0<8000;setState('ended');if(quick)showCallDebug('call ended right away')}));
     call.on('error',e=>{showCallDebug([e&&e.code,e&&e.message,e&&e.explanation].filter(Boolean).join(' · ')||String(e));setState('ended')});
   }catch(e){const m=[e&&e.code,e&&e.name,e&&e.message,e&&e.description,e&&e.explanation].filter(Boolean).join(' · ')||String(e);console.error(e);setState('ended');if(/permission|notallowed|denied|acquisition/i.test(m)){toast('Microphone blocked. Allow it for this site and try again.');return}showCallDebug(m)}
 }

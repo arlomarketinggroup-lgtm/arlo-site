@@ -2,6 +2,7 @@
 // and which of YOUR GHL numbers to show as caller ID.
 // Env: TWILIO_AUTH_TOKEN, TWILIO_CALLERID_ARLO, TWILIO_CALLERID_CF  (verified caller IDs, +1XXXXXXXXXX)
 import crypto from "node:crypto";
+import { getStore } from "@netlify/blobs";
 
 const env = (k) => (typeof Netlify !== "undefined" ? Netlify.env.get(k) : process.env[k]);
 const xml = (body, status = 200) => new Response(body, { status, headers: { "content-type": "text/xml" } });
@@ -18,9 +19,21 @@ function validSignature(url, params, signature, token) {
 export default async (req) => {
   const form = new URLSearchParams(await req.text());
   const params = Object.fromEntries(form);
-  const base = env("URL") || new URL(req.url).origin; // Netlify sets URL to your site's main URL
-  const url = base.replace(/\/$/, "") + "/api/voice";
-  if (!validSignature(url, params, req.headers.get("x-twilio-signature"), env("TWILIO_AUTH_TOKEN") || "")) {
+  // Twilio signs the exact URL it called; try the likely spellings of our address.
+  const sig = req.headers.get("x-twilio-signature");
+  const token = env("TWILIO_AUTH_TOKEN") || "";
+  const reqUrl = new URL(req.url);
+  const candidates = [...new Set([
+    reqUrl.origin + reqUrl.pathname,
+    (env("URL") || "").replace(/\/$/, "") + "/api/voice",
+    "https://arlomarketinggroup.com/api/voice",
+    "https://www.arlomarketinggroup.com/api/voice",
+  ])];
+  const matched = candidates.find((u) => validSignature(u, params, sig, token));
+  const log = { at: new Date().toISOString(), sigPresent: !!sig, matched: matched || null, tried: candidates, brand: params.brand || null,
+    accountMatches: params.AccountSid === env("TWILIO_ACCOUNT_SID") };
+  if (!matched) {
+    try { await getStore("cold-calls").setJSON("voice-last", { ...log, result: "signature failed" }); } catch (e) {}
     return xml("<Response><Reject/></Response>", 403);
   }
   const to = String(params.To || "").replace(/[^\d+]/g, "");
@@ -28,6 +41,7 @@ export default async (req) => {
   const e164 = to.startsWith("+") ? to : "+1" + to.replace(/^1(?=\d{10}$)/, "");
   const rawCaller = String((params.brand === "cf" ? env("TWILIO_CALLERID_CF") : env("TWILIO_CALLERID_ARLO")) || "").replace(/[^\d]/g, "");
   const callerId = "+" + (rawCaller.length === 10 ? "1" + rawCaller : rawCaller);
+  try { await getStore("cold-calls").setJSON("voice-last", { ...log, result: "dialing", callerId }); } catch (e) {}
   return xml(`<Response><Dial callerId="${esc(callerId)}" answerOnBridge="true" timeout="30"><Number>${esc(e164)}</Number></Dial></Response>`);
 };
 

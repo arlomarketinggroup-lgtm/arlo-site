@@ -150,6 +150,13 @@ export default async (req) => {
         const j = await r.json().catch(() => ({}));
         out.appLookup = r.status; out.voiceUrl = j.voice_url || null; out.voiceMethod = j.voice_method || null; out.twilioMsg = j.message || null;
       } catch (e) { out.appLookup = "error: " + e.message; }
+      try { out.lastVoice = await store.get("voice-last", { type: "json" }); } catch (e) {}
+      try {
+        const r = await fetch("https://monitor.twilio.com/v1/Alerts?PageSize=3", {
+          headers: { Authorization: "Basic " + Buffer.from(`${key}:${secret}`).toString("base64") } });
+        const j = await r.json().catch(() => ({}));
+        out.alerts = (j.alerts || []).map((a) => ({ code: a.error_code, when: a.date_created, text: String(a.alert_text || "").slice(0, 160) }));
+      } catch (e) {}
       return json(out);
     }
     if (action === "token") {
