@@ -26,7 +26,8 @@ export default async (req) => {
   const to = String(params.To || "").replace(/[^\d+]/g, "");
   if (!/^\+?1?\d{10}$/.test(to)) return xml("<Response><Say>That number looks wrong.</Say></Response>");
   const e164 = to.startsWith("+") ? to : "+1" + to.replace(/^1(?=\d{10}$)/, "");
-  const callerId = params.brand === "cf" ? env("TWILIO_CALLERID_CF") : env("TWILIO_CALLERID_ARLO");
+  const rawCaller = String((params.brand === "cf" ? env("TWILIO_CALLERID_CF") : env("TWILIO_CALLERID_ARLO")) || "").replace(/[^\d]/g, "");
+  const callerId = "+" + (rawCaller.length === 10 ? "1" + rawCaller : rawCaller);
   return xml(`<Response><Dial callerId="${esc(callerId)}" answerOnBridge="true" timeout="30"><Number>${esc(e164)}</Number></Dial></Response>`);
 };
 
