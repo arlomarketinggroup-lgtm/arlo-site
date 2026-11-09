@@ -29,7 +29,12 @@ export default async (req) => {
     "https://arlomarketinggroup.com/api/voice",
     "https://www.arlomarketinggroup.com/api/voice",
   ])];
-  const matched = candidates.find((u) => validSignature(u, params, sig, token));
+  // Primary check: Twilio's signature (needs the right Auth Token). Backup check: the call came from
+  // OUR Twilio account AND OUR TwiML app — both private IDs that only Twilio sends.
+  const sigMatch = candidates.find((u) => validSignature(u, params, sig, token));
+  const idMatch = params.AccountSid && params.AccountSid === env("TWILIO_ACCOUNT_SID") &&
+    params.ApplicationSid && params.ApplicationSid === env("TWILIO_APP_SID") ? "account+app ids" : null;
+  const matched = sigMatch || idMatch;
   const log = { at: new Date().toISOString(), sigPresent: !!sig, matched: matched || null, tried: candidates, brand: params.brand || null,
     accountMatches: params.AccountSid === env("TWILIO_ACCOUNT_SID") };
   if (!matched) {
