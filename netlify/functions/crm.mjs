@@ -27,7 +27,9 @@ function tagFor(brand, outcome) {
   let custom = {};
   try { custom = JSON.parse(env(brand === "cf" ? "GHL_CF_TAGS" : "GHL_ARLO_TAGS") || "{}"); } catch (e) {}
   const key = outcome === "vm" ? "na" : outcome === "talked" ? "int" : outcome;
-  return custom[key] || OUTCOME_TAG[key];
+  // ContractFlow (Hula) workflows trigger on these exact tags
+  const CF_TAGS = { booked: "call-booked", int: "call-interested", ni: "call-not-interested", na: "call-no-answer" };
+  return custom[key] || (brand === "cf" ? CF_TAGS[key] : OUTCOME_TAG[key]);
 }
 function account(brand) {
   const key = brand === "cf" ? "CF" : "ARLO";
