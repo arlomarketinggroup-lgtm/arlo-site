@@ -441,7 +441,7 @@ const BRANDS={arlo:{name:'Arlo',line:'Calling for Arlo · websites · your GHL n
               cf:{name:'ContractFlow',line:'Calling for ContractFlow · Hula Creative · ads for contractors'}};
 const OUT=[['na','No answer / VM'],['int','Interested'],['booked','Booked'],['ni','Not interested']];
 const GROUP=o=>o==='booked'?'booked':o==='ni'?'ni':(o==='int'||o==='talked')?'int':'na';
-const OUTL={...Object.fromEntries(OUT),vm:'Voicemail',talked:'Interested'};
+const OUTL={...Object.fromEntries(OUT),vm:'Voicemail',talked:'Interested',dialed:'Dialed'};
 const S={brand:'arlo',filter:'todo',q:'',leads:{arlo:[],cf:[]},log:[],loc:{},demo:false,active:null,key:'',showAll:false};
 const $=id=>document.getElementById(id);
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
@@ -550,11 +550,14 @@ function openCall(id){const l=S.leads[S.brand].find(x=>x.id===id);if(l)startCall
 function openGHL(l){if(S.demo){toast('Preview: would open this contact in GHL');return}window.open(`https://${S.brand==='arlo'?'app.arlomarketinggroup.com':'app.gohighlevel.com'}/v2/location/${S.loc[S.brand]}/contacts/detail/${encodeURIComponent(l.id)}`,'ghl-'+S.brand)}
 async function logCall(outcome,lead){
   const em=(($('leademail')||{}).value||'').trim(),note=(($('leadnote')||{}).value||'').trim();if(lead&&em)lead.email=em;
-  const e={id:Math.random().toString(36).slice(2),brand:S.brand,contactId:lead?lead.id:null,name:lead?lead.name:'Manual call',phone:lead?lead.phone:'',email:em||undefined,note:note||undefined,outcome,t:Date.now()};
+  // If this dial was already counted when it started, update that entry instead of adding a second one.
+  const prev=P.entryId&&S.log.find(x=>x.id===P.entryId&&x.outcome==='dialed'&&(!lead||x.contactId===lead.id));
+  const e=prev?Object.assign(prev,{outcome,email:em||undefined,note:note||undefined}):{id:Math.random().toString(36).slice(2),brand:S.brand,contactId:lead?lead.id:null,name:lead?lead.name:'Manual call',phone:lead?lead.phone:'',email:em||undefined,note:note||undefined,outcome,t:Date.now()};
+  P.entryId=null;
   if(P.call){try{P.call.disconnect()}catch(x){}}clearInterval(P.tick);P.call=null;P.state='idle';P.mode='dial';P.num='';P.email='';P.note='';renderPad();
-  S.log.push(e);S.active=null;render();
+  if(!prev)S.log.push(e);S.active=null;render();
   const c=counts()[S.brand];
-  toast(c===100?'100. Goal hit. Now get 200.':c===200?'200. Locked in.':`Logged · ${c} / 100`);
+  toast(prev?`Saved · ${OUTL[outcome]}`:c===100?'100. Goal hit. Now get 200.':c===200?'200. Locked in.':`Logged · ${c} / 100`);
   if(S.demo){demoSave();return}
   try{const r=await api('log',{entry:e});if(r.log)S.log=r.log;render()}catch(err){toast('Couldn’t save. Check your connection.')}
 }
@@ -636,10 +639,19 @@ function fmtDur(ms){const t=Math.max(0,Math.floor(ms/1000));return Math.floor(t/
 function statusText(){return P.state==='connecting'?'Connecting…':P.state==='ringing'?'Ringing…':P.state==='live'?fmtDur(Date.now()-P.t0):P.state==='ended'?`Call ended${P.t0?' · '+fmtDur(P.dur):''}`:P.state==='ghl'?'Dial in GHL':''}
 function setState(st){P.state=st;if(st==='live'){P.t0=Date.now();clearInterval(P.tick);P.tick=setInterval(()=>{const el=$('ctimer');if(el)el.textContent=statusText()},1000)}
   if(st==='ended'){P.dur=P.t0?Date.now()-P.t0:0;clearInterval(P.tick);P.call=null;P.muted=false;P.dtmf=false}renderPad()}
+function countDial(lead){
+  // Count the dial the moment it starts; the outcome button fills in the result later.
+  const e={id:Math.random().toString(36).slice(2),brand:S.brand,contactId:lead.id,name:lead.name,phone:lead.phone||'',outcome:'dialed',t:Date.now()};
+  P.entryId=e.id;S.log.push(e);render();
+  const c=counts()[S.brand];if(c===100)toast('100. Goal hit. Now get 200.');else if(c===200)toast('200. Locked in.');
+  if(S.demo){demoSave();return}
+  api('log',{entry:e}).catch(()=>{});
+}
 async function startCall(lead){
   if(P.call){toast('Hang up the current call first');return}
   if(!S.leads[S.brand].some(x=>x.id===lead.id))S.leads[S.brand].unshift(lead);
   S.active=lead.id;P.mode='call';P.open=true;P.t0=0;P.email=lead.email||'';P.note='';P.muted=false;P.dtmf=false;renderLeads();setState('connecting');
+  countDial(lead);
   if(S.demo){setTimeout(()=>P.state==='connecting'&&setState('ringing'),900);setTimeout(()=>P.state==='ringing'&&setState('live'),2600);return}
   let d=null;try{d=await ensureDevice()}catch(e){d=null}
   if(!d){setState('ghl');openGHL(lead);return}

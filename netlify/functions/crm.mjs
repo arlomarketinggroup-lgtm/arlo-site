@@ -199,10 +199,11 @@ export default async (req) => {
     if (action === "log" && req.method === "POST") {
       const { entry } = await req.json();
       const log = await readLog();
-      if (!log.some((e) => e.id === entry.id)) log.push(entry);
+      const i = log.findIndex((e) => e.id === entry.id);
+      if (i >= 0) log[i] = { ...log[i], ...entry }; else log.push(entry);
       await store.setJSON(day, log);
-      // write the outcome back to the contact in GHL (best effort)
-      if (entry.contactId) {
+      // write the outcome back to the contact in GHL (best effort) — not for the automatic "dialed" entry
+      if (entry.contactId && entry.outcome !== "dialed") {
         const b = entry.brand === "cf" ? "cf" : "arlo";
         const when = new Date(entry.t).toLocaleString("en-US", { timeZone: "America/Chicago" });
         // 1) save email first so any email/SMS workflow has it  2) add the tag that triggers your workflow  3) note
