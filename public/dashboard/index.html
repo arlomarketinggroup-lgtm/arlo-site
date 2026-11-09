@@ -629,7 +629,7 @@ async function ensureDevice(){
   if(!(window.Twilio&&window.Twilio.Device))await loadScript('https://cdn.jsdelivr.net/npm/@twilio/voice-sdk@2.11.2/dist/twilio.min.js');
   device=new Twilio.Device(r.token,{codecPreferences:['opus','pcmu'],closeProtection:true});
   device.on('tokenWillExpire',async()=>{try{const t=await api('token');if(t.token)device.updateToken(t.token)}catch(e){}});
-  device.on('error',e=>toast('Call error: '+(e&&e.message||'unknown')));
+  device.on('error',e=>{const m=[e&&e.code,e&&e.message,e&&e.explanation].filter(Boolean).join(' · ');showCallDebug(m||String(e))});
   return device;
 }
 function fmtDur(ms){const t=Math.max(0,Math.floor(ms/1000));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')}
@@ -648,9 +648,12 @@ async function startCall(lead){
     call.on('ringing',()=>setState('ringing'));
     call.on('accept',()=>setState('live'));
     ['disconnect','cancel','reject'].forEach(ev=>call.on(ev,()=>setState('ended')));
-    call.on('error',e=>{toast('Call failed: '+(e&&e.message||''));setState('ended')});
-  }catch(e){const m=(e&&(e.message||e.name))||'';toast(/permission|notallowed|denied|acquisition/i.test(m)?'Microphone blocked. Allow it for this site and try again.':'Call failed: '+m);console.error(e);setState('ended')}
+    call.on('error',e=>{showCallDebug([e&&e.code,e&&e.message,e&&e.explanation].filter(Boolean).join(' · ')||String(e));setState('ended')});
+  }catch(e){const m=[e&&e.code,e&&e.name,e&&e.message,e&&e.description,e&&e.explanation].filter(Boolean).join(' · ')||String(e);console.error(e);setState('ended');if(/permission|notallowed|denied|acquisition/i.test(m)){toast('Microphone blocked. Allow it for this site and try again.');return}showCallDebug(m)}
 }
+async function showCallDebug(m){let d='';try{const c=await api('twiliocheck');d=' | check: '+JSON.stringify(c)}catch(x){d=' | check failed: '+x.message}
+  $('status').textContent='Call error: '+m+d;toast('Call failed. Details at the bottom of the page.')}
+
 function hangUp(){if(S.demo){setState('ended');return}if(P.call){try{P.call.disconnect()}catch(e){}}else setState('ended')}
 function padMatch(){const d=digits(P.num).replace(/^1(?=\d{10}$)/,'');if(d.length<4)return null;
   return S.leads[S.brand].find(l=>{const ld=digits(l.phone).replace(/^1(?=\d{10}$)/,'');return d.length>=10?ld===d:ld.startsWith(d)})||null}

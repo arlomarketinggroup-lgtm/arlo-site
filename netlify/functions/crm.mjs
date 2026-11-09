@@ -117,8 +117,8 @@ function twilioToken() {
   if (!sid || !key || !secret || !app) return null;
   const now = Math.floor(Date.now() / 1000);
   const header = { typ: "JWT", alg: "HS256", cty: "twilio-fpa;v=1" };
-  const payload = { jti: `${key}-${now}`, iss: key, sub: sid, iat: now, nbf: now, exp: now + 3600,
-    grants: { identity: "dashboard", voice: { incoming: { allow: false }, outgoing: { application_sid: app } } } };
+  const payload = { jti: `${key}-${now}`, grants: { identity: "dashboard", voice: { outgoing: { application_sid: app } } },
+    iat: now, exp: now + 3600, iss: key, sub: sid };
   const unsigned = b64url(header) + "." + b64url(payload);
   const sig = crypto.createHmac("sha256", secret).update(unsigned).digest("base64url");
   return unsigned + "." + sig;
@@ -138,6 +138,19 @@ export default async (req) => {
     if (action === "today") {
       const settings = (await store.get("settings", { type: "json" })) || null;
       return json({ log: await readLog(), settings, locations: { arlo: account("arlo").location, cf: account("cf").location } });
+    }
+    if (action === "twiliocheck") {
+      const sid = env("TWILIO_ACCOUNT_SID"), key = env("TWILIO_API_KEY"), secret = env("TWILIO_API_SECRET"), app = env("TWILIO_APP_SID");
+      const out = { hasSid: !!sid, sidOk: /^AC[0-9a-f]{32}$/i.test(sid || ""), hasKey: !!key, keyOk: /^SK[0-9a-f]{32}$/i.test(key || ""),
+        hasSecret: !!secret, hasApp: !!app, appOk: /^AP[0-9a-f]{32}$/i.test(app || ""),
+        callerArlo: env("TWILIO_CALLERID_ARLO") || null, callerCf: env("TWILIO_CALLERID_CF") || null, hasAuthToken: !!env("TWILIO_AUTH_TOKEN") };
+      try {
+        const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Applications/${app}.json`, {
+          headers: { Authorization: "Basic " + Buffer.from(`${key}:${secret}`).toString("base64") } });
+        const j = await r.json().catch(() => ({}));
+        out.appLookup = r.status; out.voiceUrl = j.voice_url || null; out.voiceMethod = j.voice_method || null; out.twilioMsg = j.message || null;
+      } catch (e) { out.appLookup = "error: " + e.message; }
+      return json(out);
     }
     if (action === "token") {
       const token = twilioToken();
