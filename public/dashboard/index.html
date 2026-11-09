@@ -547,7 +547,7 @@ function renderLog(){
 
 /* ---------- actions ---------- */
 function openCall(id){const l=S.leads[S.brand].find(x=>x.id===id);if(l)startCall(l)}
-function openGHL(l){if(S.demo){toast('Preview: would open this contact in GHL');return}window.open(`https://app.gohighlevel.com/v2/location/${S.loc[S.brand]}/contacts/detail/${encodeURIComponent(l.id)}`,'ghl-'+S.brand)}
+function openGHL(l){if(S.demo){toast('Preview: would open this contact in GHL');return}window.open(`https://${S.brand==='arlo'?'app.arlomarketinggroup.com':'app.gohighlevel.com'}/v2/location/${S.loc[S.brand]}/contacts/detail/${encodeURIComponent(l.id)}`,'ghl-'+S.brand)}
 async function logCall(outcome,lead){
   const em=(($('leademail')||{}).value||'').trim(),note=(($('leadnote')||{}).value||'').trim();if(lead&&em)lead.email=em;
   const e={id:Math.random().toString(36).slice(2),brand:S.brand,contactId:lead?lead.id:null,name:lead?lead.name:'Manual call',phone:lead?lead.phone:'',email:em||undefined,note:note||undefined,outcome,t:Date.now()};
