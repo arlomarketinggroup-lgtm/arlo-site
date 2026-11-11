@@ -19,6 +19,19 @@ function validSignature(url, params, signature, token) {
 export default async (req) => {
   const form = new URLSearchParams(await req.text());
   const params = Object.fromEntries(form);
+  const reqUrl0 = new URL(req.url);
+  // Follow-up request: Twilio reports how the dial ended. Only accepted for the call we just started (CallSid match).
+  if (reqUrl0.searchParams.get("done")) {
+    try {
+      const store = getStore("cold-calls");
+      const prev = (await store.get("voice-last", { type: "json" })) || {};
+      if (prev.callSid && params.CallSid === prev.callSid) {
+        await store.setJSON("voice-last", { ...prev, result: "finished", dialStatus: params.DialCallStatus || null,
+          dialSeconds: params.DialCallDuration || null, sipCode: params.DialSipResponseCode || null, endedAt: new Date().toISOString() });
+      }
+    } catch (e) {}
+    return xml("<Response/>");
+  }
   // Twilio signs the exact URL it called; try the likely spellings of our address.
   const sig = req.headers.get("x-twilio-signature");
   const token = env("TWILIO_AUTH_TOKEN") || "";
@@ -43,22 +56,12 @@ export default async (req) => {
     try { await getStore("cold-calls").setJSON("voice-last", { ...log, result: "signature failed" }); } catch (e) {}
     return xml("<Response><Reject/></Response>", 403);
   }
-  // Second request: Twilio reports how the dial ended (busy, no-answer, failed, completed...)
-  if (reqUrl.searchParams.get("done")) {
-    try {
-      const store = getStore("cold-calls");
-      const prev = (await store.get("voice-last", { type: "json" })) || {};
-      await store.setJSON("voice-last", { ...prev, result: "finished", dialStatus: params.DialCallStatus || null,
-        dialSeconds: params.DialCallDuration || null, sipCode: params.DialSipResponseCode || null, endedAt: new Date().toISOString() });
-    } catch (e) {}
-    return xml("<Response/>");
-  }
   const to = String(params.To || "").replace(/[^\d+]/g, "");
   if (!/^\+?1?\d{10}$/.test(to)) return xml("<Response><Say>That number looks wrong.</Say></Response>");
   const e164 = to.startsWith("+") ? to : "+1" + to.replace(/^1(?=\d{10}$)/, "");
   const rawCaller = String((params.brand === "cf" ? env("TWILIO_CALLERID_CF") : env("TWILIO_CALLERID_ARLO")) || "").replace(/[^\d]/g, "");
   const callerId = "+" + (rawCaller.length === 10 ? "1" + rawCaller : rawCaller);
-  try { await getStore("cold-calls").setJSON("voice-last", { ...log, result: "dialing", callerId }); } catch (e) {}
+  try { await getStore("cold-calls").setJSON("voice-last", { ...log, result: "dialing", callerId, callSid: params.CallSid || null }); } catch (e) {}
   return xml(`<Response><Dial callerId="${esc(callerId)}" answerOnBridge="true" timeout="30" action="/api/voice?done=1" method="POST"><Number>${esc(e164)}</Number></Dial></Response>`);
 };
 
