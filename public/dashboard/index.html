@@ -673,7 +673,7 @@ async function startCall(lead){
   if(!d){setState('ghl');openGHL(lead);return}
   try{
     const call=await d.connect({params:{To:lead.phone,brand:S.brand}});P.call=call;ringback(true);
-    call.on('ringing',hasEarly=>{setState('ringing');if(hasEarly)ringback(false)});
+    call.on('ringing',()=>setState('ringing')); // keep our ring tone going until they actually answer
     call.on('accept',()=>{ringback(false);setState('live')});
     let ended=false;const onEnd=()=>{if(ended)return;ended=true;ringback(false);hangupTone();const answered=!!P.t0;setState('ended');
       // Ask the server how the call ended (busy / no answer / couldn't be reached) and say it plainly
