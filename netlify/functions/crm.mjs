@@ -151,6 +151,18 @@ export default async (req) => {
         out.appLookup = r.status; out.voiceUrl = j.voice_url || null; out.voiceMethod = j.voice_method || null; out.twilioMsg = j.message || null;
       } catch (e) { out.appLookup = "error: " + e.message; }
       try { out.lastVoice = await store.get("voice-last", { type: "json" }); } catch (e) {}
+      // What Twilio itself recorded for the last call (browser leg + the leg to the phone)
+      try {
+        const cs = out.lastVoice && out.lastVoice.callSid;
+        if (cs) {
+          const auth = { headers: { Authorization: "Basic " + Buffer.from(`${key}:${secret}`).toString("base64") } };
+          const base = `https://api.twilio.com/2010-04-01/Accounts/${sid}/Calls`;
+          const p = await (await fetch(`${base}/${cs}.json`, auth)).json().catch(() => ({}));
+          const c = await (await fetch(`${base}.json?ParentCallSid=${cs}&PageSize=3`, auth)).json().catch(() => ({}));
+          out.twilioCall = { browser: { status: p.status, secs: p.duration },
+            phone: (c.calls || []).map((x) => ({ status: x.status, secs: x.duration, to: x.to ? "…" + String(x.to).slice(-4) : null, answeredBy: x.answered_by })) };
+        }
+      } catch (e) { out.twilioCall = "error: " + e.message; }
       try {
         const r = await fetch("https://monitor.twilio.com/v1/Alerts?PageSize=3", {
           headers: { Authorization: "Basic " + Buffer.from(`${key}:${secret}`).toString("base64") } });
