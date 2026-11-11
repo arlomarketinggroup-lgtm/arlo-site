@@ -521,7 +521,7 @@ function renderLeads(){
     if(qd.length>=3&&digits(l.phone).includes(qd))return true;
     return (l.name+' '+(l.company||'')).toLowerCase().includes(q);
   });
-  if(!q&&S.filter==='todo')list=list.filter(l=>!lastOutcome(l.id)||S.active===l.id);
+  if(!q&&S.filter==='todo')list=list.filter(l=>!lastOutcome(l.id)); // anyone dialed today moves to Recent calls
   $('leadcount').textContent=`${list.length} lead${list.length===1?'':'s'}`;
   if(!list.length){$('leads').innerHTML=`<div class="empty">${q?'No match. Import this lead into '+(S.brand==='arlo'?'Arlo':'Hula Creative')+' GHL with the cold-call tag.':S.filter==='todo'&&S.leads[S.brand].length?'Everyone on the list has been called today.':'No leads yet. Import contacts into GHL and tag them cold-call.'}</div>`;return}
   $('leads').innerHTML=list.slice(0,150).map(l=>{
@@ -869,6 +869,9 @@ function drawRush(){
 }
 addEventListener('resize',()=>{clearTimeout(drawRush.t);drawRush.t=setTimeout(drawRush,150)});
 
+// Pull newly tagged GHL leads automatically (every minute, and when you come back to the tab)
+setInterval(()=>{if(!S.demo&&$('app')&&!$('app').hidden&&!P.call)loadLeads()},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!S.demo&&$('app')&&!$('app').hidden&&!P.call)loadLeads()});
 S.day=todayCT();setInterval(()=>{if(S.day!==todayCT())location.reload()},60000);
 boot();
 })();
