@@ -671,12 +671,15 @@ async function startCall(lead){
     call.on('accept',()=>{ringback(false);setState('live')});
     let ended=false;const onEnd=()=>{if(ended)return;ended=true;ringback(false);const answered=!!P.t0;setState('ended');
       // Ask the server how the call ended (busy / no answer / couldn't be reached) and say it plainly
-      setTimeout(()=>showCallDebug(answered?'':'call ended before they answered'),2500)};
+      setTimeout(()=>quietEnd(),2500)};
     ['disconnect','cancel','reject'].forEach(ev=>call.on(ev,onEnd));
     call.on('error',e=>{ringback(false);showCallDebug([e&&e.code,e&&e.message,e&&e.explanation].filter(Boolean).join(' · ')||String(e));onEnd()});
   }catch(e){const m=[e&&e.code,e&&e.name,e&&e.message,e&&e.description,e&&e.explanation].filter(Boolean).join(' · ')||String(e);console.error(e);setState('ended');if(/permission|notallowed|denied|acquisition/i.test(m)){toast('Microphone blocked. Allow it for this site and try again.');return}showCallDebug(m)}
 }
 const DIALTXT={busy:'Their line was busy.','no-answer':'They didn’t pick up.',failed:'That number couldn’t be reached (disconnected, landline blocking, or carrier blocked).',canceled:'Call was canceled.',completed:'Call connected and ended.'};
+// Normal end of a call (they hung up, declined, busy, no answer): stay silent, just note it in the status line.
+async function quietEnd(){try{const c=await api('twiliocheck');const lv=c.lastVoice||{},tc=c.twilioCall||{},ph=(tc.phone||[])[0]||{};
+  const st=lv.dialStatus||ph.status||'ended';$('status').textContent='Last call: '+st+(ph.secs?' · '+ph.secs+'s':'')}catch(e){}}
 async function showCallDebug(m){let d='';try{const c=await api('twiliocheck');const lv=c.lastVoice||{};
   if(!m&&lv.dialStatus==='completed'){$('status').textContent='Last call: completed'+(lv.dialSeconds?' · '+lv.dialSeconds+'s':'');return}
   if(lv.dialStatus&&DIALTXT[lv.dialStatus]&&!/error|failed:/i.test(m)){toast(DIALTXT[lv.dialStatus]+' Log it and dial the next one.');$('status').textContent='Last call: '+lv.dialStatus+(lv.sipCode?' · code '+lv.sipCode:'');return}
