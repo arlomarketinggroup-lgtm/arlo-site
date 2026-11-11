@@ -647,6 +647,12 @@ function countDial(lead){
   if(S.demo){demoSave();return}
   api('log',{entry:e}).catch(()=>{});
 }
+function hangupTone(){ // three short beeps, like a phone hanging up
+  try{const ctx=new (window.AudioContext||window.webkitAudioContext)();const g=ctx.createGain();g.gain.value=0;g.connect(ctx.destination);
+    const o=ctx.createOscillator();o.frequency.value=480;o.connect(g);o.start();const t=ctx.currentTime;
+    [0,0.35,0.7].forEach(d=>{g.gain.setValueAtTime(0.07,t+d);g.gain.setValueAtTime(0,t+d+0.2)});
+    setTimeout(()=>{try{o.stop();ctx.close()}catch(e){}},1200)}catch(e){}
+}
 let RB=null;
 function ringback(on){
   try{
@@ -669,7 +675,7 @@ async function startCall(lead){
     const call=await d.connect({params:{To:lead.phone,brand:S.brand}});P.call=call;ringback(true);
     call.on('ringing',hasEarly=>{setState('ringing');if(hasEarly)ringback(false)});
     call.on('accept',()=>{ringback(false);setState('live')});
-    let ended=false;const onEnd=()=>{if(ended)return;ended=true;ringback(false);const answered=!!P.t0;setState('ended');
+    let ended=false;const onEnd=()=>{if(ended)return;ended=true;ringback(false);hangupTone();const answered=!!P.t0;setState('ended');
       // Ask the server how the call ended (busy / no answer / couldn't be reached) and say it plainly
       setTimeout(()=>quietEnd(),2500)};
     ['disconnect','cancel','reject'].forEach(ev=>call.on(ev,onEnd));

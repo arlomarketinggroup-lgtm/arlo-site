@@ -62,7 +62,7 @@ export default async (req) => {
   const rawCaller = String((params.brand === "cf" ? env("TWILIO_CALLERID_CF") : env("TWILIO_CALLERID_ARLO")) || "").replace(/[^\d]/g, "");
   const callerId = "+" + (rawCaller.length === 10 ? "1" + rawCaller : rawCaller);
   try { await getStore("cold-calls").setJSON("voice-last", { ...log, result: "dialing", callerId, callSid: params.CallSid || null }); } catch (e) {}
-  return xml(`<Response><Dial callerId="${esc(callerId)}" answerOnBridge="true" timeout="30" action="/api/voice?done=1" method="POST"><Number>${esc(e164)}</Number></Dial></Response>`);
+  return xml(`<Response><Dial callerId="${esc(callerId)}" answerOnBridge="true" timeout="30"><Number>${esc(e164)}</Number></Dial></Response>`);
 };
 
 export const config = { path: "/api/voice" };
