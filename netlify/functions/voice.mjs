@@ -24,6 +24,8 @@ export default async (req) => {
   const token = env("TWILIO_AUTH_TOKEN") || "";
   const reqUrl = new URL(req.url);
   const candidates = [...new Set([
+    reqUrl.origin + reqUrl.pathname + reqUrl.search,
+    "https://arlomarketinggroup.com/api/voice" + reqUrl.search,
     reqUrl.origin + reqUrl.pathname,
     (env("URL") || "").replace(/\/$/, "") + "/api/voice",
     "https://arlomarketinggroup.com/api/voice",
@@ -41,13 +43,23 @@ export default async (req) => {
     try { await getStore("cold-calls").setJSON("voice-last", { ...log, result: "signature failed" }); } catch (e) {}
     return xml("<Response><Reject/></Response>", 403);
   }
+  // Second request: Twilio reports how the dial ended (busy, no-answer, failed, completed...)
+  if (reqUrl.searchParams.get("done")) {
+    try {
+      const store = getStore("cold-calls");
+      const prev = (await store.get("voice-last", { type: "json" })) || {};
+      await store.setJSON("voice-last", { ...prev, result: "finished", dialStatus: params.DialCallStatus || null,
+        dialSeconds: params.DialCallDuration || null, sipCode: params.DialSipResponseCode || null, endedAt: new Date().toISOString() });
+    } catch (e) {}
+    return xml("<Response/>");
+  }
   const to = String(params.To || "").replace(/[^\d+]/g, "");
   if (!/^\+?1?\d{10}$/.test(to)) return xml("<Response><Say>That number looks wrong.</Say></Response>");
   const e164 = to.startsWith("+") ? to : "+1" + to.replace(/^1(?=\d{10}$)/, "");
   const rawCaller = String((params.brand === "cf" ? env("TWILIO_CALLERID_CF") : env("TWILIO_CALLERID_ARLO")) || "").replace(/[^\d]/g, "");
   const callerId = "+" + (rawCaller.length === 10 ? "1" + rawCaller : rawCaller);
   try { await getStore("cold-calls").setJSON("voice-last", { ...log, result: "dialing", callerId }); } catch (e) {}
-  return xml(`<Response><Dial callerId="${esc(callerId)}" answerOnBridge="true" timeout="30"><Number>${esc(e164)}</Number></Dial></Response>`);
+  return xml(`<Response><Dial callerId="${esc(callerId)}" answerOnBridge="true" timeout="30" action="/api/voice?done=1" method="POST"><Number>${esc(e164)}</Number></Dial></Response>`);
 };
 
 export const config = { path: "/api/voice" };
