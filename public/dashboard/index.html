@@ -14,7 +14,7 @@
   --bg:#ffffff; --ink:#121117; --ink-2:#5d5b66; --ink-3:#9a98a3;
   --line:#ecebf0; --soft:#f7f6fa; --silver:#bdbcc6;
   --p:#5B21F5; --p-2:#7B47FF; --p-mid:#C4B5FD; --p-soft:#EDE9FF; --p-wash:#f6f3ff;
-  --go:#16b55a; --go-2:#0f9f4c; --ok:#2f8f57; --ok-soft:#e5f3ea; --mid:#d9922b; --mid-soft:#fbf0dc; --no:#a63b36; --no-soft:#f6e3e2;
+  --go:#16b55a; --go-2:#0f9f4c; --ok:#2f8f57; --ok-soft:#e5f3ea; --mid:#d9922b; --mid-soft:#fbf0dc; --no:#a63b36; --no-soft:#f6e3e2; --gone:#4e7480; --gone-soft:#e6eef0;
   --f-ui:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-quote:"Instrument Serif",Georgia,"Times New Roman",serif;
   --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
@@ -133,6 +133,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:16px;fl
 .outs [data-out="int"]{background:var(--mid-soft);color:#9a6214}
 .outs [data-out="ni"]{background:var(--no-soft);color:var(--no)}
 .outs [data-out="na"]{background:var(--p-soft);color:var(--p)}
+.outs [data-out="gone"]{background:var(--gone-soft);color:var(--gone);grid-column:1/-1}
 .outs button:hover{filter:brightness(.96)}
 .reopen{border:0;background:none;color:var(--p);font-size:12.5px;text-decoration:underline;padding:0;justify-self:start}
 .row .oncall{font-size:11.5px;font-weight:600;color:var(--go-2)}
@@ -257,9 +258,11 @@ section.list h2 .n{font-family:var(--f-ui);font-size:13px;color:var(--ink-3)}
 .pill.o-int,.pill.o-talked{background:var(--mid-soft);color:#9a6214}
 .pill.o-ni{background:var(--no-soft);color:var(--no)}
 .pill.o-na,.pill.o-vm{background:var(--p-soft);color:var(--p)}
+.pill.o-gone{background:var(--gone-soft);color:var(--gone)}
 .cells i.c-booked{background:var(--ok);box-shadow:none}
 .cells i.c-int{background:var(--mid);box-shadow:none}
 .cells i.c-ni{background:var(--no);box-shadow:none}
+.cells i.c-gone{background:var(--gone);box-shadow:none}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
@@ -390,6 +393,7 @@ section.list h2 .n{font-family:var(--f-ui);font-size:13px;color:var(--ink-3)}
       <input id="q" type="search" placeholder="Type a number or name…" autocomplete="off">
       <div class="seg" id="filters">
         <button data-f="todo" aria-pressed="true">Not called</button>
+        <button data-f="cb" aria-pressed="false">Call back</button>
         <button data-f="all" aria-pressed="false">All</button>
       </div>
       <button class="addlead" id="addleadbtn" type="button">+ Add lead</button>
@@ -439,8 +443,8 @@ section.list h2 .n{font-family:var(--f-ui);font-size:13px;color:var(--ink-3)}
 const API='/api/crm';
 const BRANDS={arlo:{name:'Arlo',line:'Calling for Arlo · websites · your GHL number'},
               cf:{name:'ContractFlow',line:'Calling for ContractFlow · Hula Creative · ads for contractors'}};
-const OUT=[['na','No answer / VM'],['int','Interested'],['booked','Booked'],['ni','Not interested']];
-const GROUP=o=>o==='booked'?'booked':o==='ni'?'ni':(o==='int'||o==='talked')?'int':'na';
+const OUT=[['na','No answer / VM'],['int','Interested'],['booked','Booked'],['ni','Not interested'],['gone','Owner gone']];
+const GROUP=o=>o==='booked'?'booked':o==='ni'?'ni':o==='gone'?'gone':(o==='int'||o==='talked')?'int':'na';
 const OUTL={...Object.fromEntries(OUT),vm:'Voicemail',talked:'Interested',dialed:'Dialed'};
 const S={brand:'arlo',filter:'todo',q:'',leads:{arlo:[],cf:[]},log:[],loc:{},demo:false,active:null,key:'',showAll:false};
 const $=id=>document.getElementById(id);
@@ -493,8 +497,8 @@ function render(){
   $('c-arlo').textContent=`${c.arlo}/100`;$('c-cf').textContent=`${c.cf}/100`;
   const mine=S.log.filter(e=>e.brand===S.brand);let cells='';
   for(let i=0;i<100;i++){const e=mine[i];cells+=e?`<i class="on c-${GROUP(e.outcome)}" title="${esc(e.name)} · ${OUTL[e.outcome]||''}"></i>`:'<i></i>'}
-  const cnt={na:0,int:0,booked:0,ni:0};mine.forEach(e=>cnt[GROUP(e.outcome)]++);
-  $('legend').innerHTML=[['booked','Booked','var(--ok)'],['int','Interested','var(--mid)'],['ni','Not interested','var(--no)'],['na','No answer','var(--p)']].map(([k,l,c])=>`<span><i style="background:${c}"></i>${l} <b>${cnt[k]}</b></span>`).join('');
+  const cnt={na:0,int:0,booked:0,ni:0,gone:0};mine.forEach(e=>cnt[GROUP(e.outcome)]++);
+  $('legend').innerHTML=[['booked','Booked','var(--ok)'],['int','Interested','var(--mid)'],['ni','Not interested','var(--no)'],['gone','Owner gone','var(--gone)'],['na','No answer','var(--p)']].map(([k,l,c])=>`<span><i style="background:${c}"></i>${l} <b>${cnt[k]}</b></span>`).join('');
   $('cells').innerHTML=cells;
   const h=+new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',hour:'numeric',hour12:false}).format(new Date());
   const left=100-n;
@@ -521,9 +525,11 @@ function renderLeads(){
     if(qd.length>=3&&digits(l.phone).includes(qd))return true;
     return (l.name+' '+(l.company||'')).toLowerCase().includes(q);
   });
-  if(!q&&S.filter==='todo')list=list.filter(l=>!lastOutcome(l.id)); // anyone dialed today moves to Recent calls
+  const isCB=l=>lastOutcome(l.id)==='gone'||(l.tags||[]).some(t=>/owner-?gone/i.test(String(t).replace(/\s+/g,'-')));
+  if(!q&&S.filter==='cb')list=list.filter(isCB);
+  if(!q&&S.filter==='todo')list=list.filter(l=>!lastOutcome(l.id)&&!isCB(l)); // anyone dialed today moves to Recent calls
   $('leadcount').textContent=`${list.length} lead${list.length===1?'':'s'}`;
-  if(!list.length){$('leads').innerHTML=`<div class="empty">${q?'No match. Import this lead into '+(S.brand==='arlo'?'Arlo':'Hula Creative')+' GHL with the cold-call tag.':S.filter==='todo'&&S.leads[S.brand].length?'Everyone on the list has been called today.':'No leads yet. Import contacts into GHL and tag them cold-call.'}</div>`;return}
+  if(!list.length){$('leads').innerHTML=`<div class="empty">${q?'No match. Import this lead into '+(S.brand==='arlo'?'Arlo':'Hula Creative')+' GHL with the cold-call tag.':S.filter==='cb'?'No call backs yet. Leads you mark Owner gone show up here.':S.filter==='todo'&&S.leads[S.brand].length?'Everyone on the list has been called today.':'No leads yet. Import contacts into GHL and tag them cold-call.'}</div>`;return}
   $('leads').innerHTML=list.slice(0,150).map(l=>{
     const o=lastOutcome(l.id),act=S.active===l.id;
     return `<div class="row${act?' active':''}">

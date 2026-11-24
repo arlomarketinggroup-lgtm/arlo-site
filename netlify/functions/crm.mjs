@@ -19,8 +19,8 @@ const env = (k) => (typeof Netlify !== "undefined" ? Netlify.env.get(k) : proces
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
-const OUTCOME_TAG = { na: "cc-no-answer", vm: "cc-no-answer", int: "cc-interested", talked: "cc-interested", booked: "cc-booked", ni: "cc-not-interested" };
-const OUTCOME_TXT = { na: "No answer / voicemail", vm: "Voicemail", int: "Interested, no meeting yet", talked: "Interested", booked: "Meeting booked", ni: "Not interested" };
+const OUTCOME_TAG = { na: "cc-no-answer", vm: "cc-no-answer", int: "cc-interested", talked: "cc-interested", booked: "cc-booked", ni: "cc-not-interested", gone: "cc-owner-gone" };
+const OUTCOME_TXT = { na: "No answer / voicemail", vm: "Voicemail", int: "Interested, no meeting yet", talked: "Interested", booked: "Meeting booked", ni: "Not interested", gone: "Owner not there, call back" };
 
 // Tag added in GHL for each button. Each account can use its own names (see GHL_*_TAGS).
 function tagFor(brand, outcome) {
@@ -28,7 +28,7 @@ function tagFor(brand, outcome) {
   try { custom = JSON.parse(env(brand === "cf" ? "GHL_CF_TAGS" : "GHL_ARLO_TAGS") || "{}"); } catch (e) {}
   const key = outcome === "vm" ? "na" : outcome === "talked" ? "int" : outcome;
   // ContractFlow (Hula) workflows trigger on these exact tags
-  const CF_TAGS = { booked: "call-booked", int: "call-interested", ni: "call-not-interested", na: "call-no-answer" };
+  const CF_TAGS = { booked: "call-booked", int: "call-interested", ni: "call-not-interested", na: "call-no-answer", gone: "call-owner-gone" };
   return custom[key] || (brand === "cf" ? CF_TAGS[key] : OUTCOME_TAG[key]);
 }
 function account(brand) {
